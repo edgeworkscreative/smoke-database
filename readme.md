@@ -16,7 +16,7 @@ async function example() {
   })
 
   // insert...
-  database.store("customers")
+  await database.store("customers")
           .insert({firstname: "dave", lastname: "smith"})
           .submit()
 
