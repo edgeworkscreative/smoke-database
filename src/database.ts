@@ -45,7 +45,7 @@ export class Database {
     private _db     : IDBDatabase
     private _schema : Schema
     private _stores : {[name: string]: Store<any>}
-
+    
     /**
      * creates a new database with the given schema.
      * @param {Schema} schema the schema to use.

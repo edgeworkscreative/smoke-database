@@ -58,15 +58,15 @@ export function databaseOpen(schema: Schema): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     let factory             = indexedDBFactory()
     let request             = factory.open(schema.name, schema.version)
-    request.onupgradeneeded = event => {
+    request.addEventListener("error", () => reject(request.error))
+    request.addEventListener("success", () => resolve(request.result))
+    request.addEventListener("upgradeneeded", () => {
       let database = request.result as IDBDatabase
       schema.stores.forEach(store => {
         if(database.objectStoreNames.contains(store)) return
         let objectStore = database.createObjectStore(store, { autoIncrement: true })
       })
-    }
-    request.onerror         = () => reject(request.error)
-    request.onsuccess       = () => resolve(request.result)
+    })
   })
 }
 
@@ -79,7 +79,7 @@ export function databaseDelete(name: string): Promise<any> {
   return new Promise((resolve, reject) => {
     let factory       = indexedDBFactory()
     let request       = factory.deleteDatabase(name)
-    request.onerror   = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result)
+    request.addEventListener("error",   () => reject(request.error))
+    request.addEventListener("success", () => resolve(request.result))
   })
 }

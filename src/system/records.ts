@@ -72,7 +72,7 @@ export function updateMany(database: IDBDatabase, store: string, records: Array<
       if(cursor !== null) {
         for(let i = 0; i < records.length; i++) {
           if(records[i].key === cursor.key) {
-            cursor.update(records[i])
+            cursor.update(records[i].value)
             break;
           }
         } cursor.continue()
@@ -80,7 +80,6 @@ export function updateMany(database: IDBDatabase, store: string, records: Array<
     })
   })
 }
-
 
 /**
  * deletes multiple records into the given database store.
@@ -109,8 +108,8 @@ export function deleteMany(database: IDBDatabase, store: string, records: Array<
 export interface RecordData  { type: "data",  data : Record }
 export interface RecordError { type: "error", error: any }
 export interface RecordEnd   { type: "end" }
-export type Element = RecordData | RecordError | RecordEnd
-export function scanAll(database: IDBDatabase, store_name: string, func: (element: Element) => void) : Promise<any> {
+export type Event = RecordData | RecordError | RecordEnd
+export function scanAll(database: IDBDatabase, store_name: string, func: (event: Event) => void) : Promise<any> {
   return new Promise<any>((resolve, reject) => {
     let done          = false
     let transaction   = database.transaction([store_name], 'readonly');
