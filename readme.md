@@ -7,25 +7,29 @@ Abstraction over indexeddb with LINQ style data queries and projection.
 async function example() {
 
   // attach to database.
-  const database = new smoke.Database({
-      name    : "myshop",
+  const database = new smokedb.Database({
+      name    : "todo-database",
       version : 1,
       stores  : [
-        "customers"
+        "items"
       ]
   })
 
-  // insert...
-  await database.store("customers")
-          .insert({firstname: "dave", lastname: "smith"})
-          .submit()
+  // insert records.
+  await database.store("items")
+    .insert({priority: "critical",  description: "make coffee."})
+    .insert({priority: "medium",    description: "write documentation."})
+    .insert({priority: "high"       description: "calculate 42."})
+    .insert({priority: "critical",  description: "write code."})
+    .insert({priority: "low",       description: "debug internet explorer."})
+    .submit()
 
-  // and query
-  let customer = await database
+  // query records.
+  let urgent = await database
        .store ("customers")
-       .where (record  => record.value.firstname === "dave")
+       .where (record  => record.value.priority === "critical")
        .select(record  => record.value)
-       .first ()
+       .collect()
 }
 ```
 
@@ -47,8 +51,8 @@ Note: smoke-db does not make use of store indices.
 Note: stores created with smoke are automatically assign auto incremented keys.
 
 ```javascript
-const database = new smoke.Database({
-    name    : "myshop",
+const database = new smokedb.Database({
+    name    : "crm-db",
     version : 1,
     stores  : [
       "customers"
@@ -71,9 +75,9 @@ let store = database
       .submit()
 ```
 
-### updating records
+### update records
 
-To update a record, the caller must first read a record, update it, then write it back. The following updates daves ```age``` to 33.
+To update a records, the caller must first query the record(s) being updated, update it, then write it back. The following updates daves ```age``` to 33.
 
 ```typescript
 async function update() {
