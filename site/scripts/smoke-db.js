@@ -74,7 +74,7 @@ var smokedb = (function () {
           if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
       }
   };
-  define("src/system/database", ["require", "exports"], function (require, exports) {
+  define("src/system/db", ["require", "exports"], function (require, exports) {
       "use strict";
       exports.indexedDBFactory = function () {
           var host = window;
@@ -84,23 +84,39 @@ var smokedb = (function () {
               || host.msIndexedDB
               || host.shimIndexedDB;
       };
-      function databaseOpen(schema) {
+      function databaseOpen(name) {
           return new Promise(function (resolve, reject) {
               var factory = exports.indexedDBFactory();
-              var request = factory.open(schema.name, schema.version);
+              var request = factory.open(name);
               request.addEventListener("error", function () { return reject(request.error); });
               request.addEventListener("success", function () { return resolve(request.result); });
-              request.addEventListener("upgradeneeded", function () {
-                  var database = request.result;
-                  schema.stores.forEach(function (store) {
-                      if (database.objectStoreNames.contains(store))
-                          return;
-                      var objectStore = database.createObjectStore(store, { autoIncrement: true });
-                  });
-              });
           });
       }
       exports.databaseOpen = databaseOpen;
+      function databaseUpgrade(db, additions, removals) {
+          return new Promise(function (resolve, reject) {
+              var name = db.name;
+              var version = db.version;
+              additions = additions.filter(function (store) { return !db.objectStoreNames.contains(store); });
+              removals = removals.filter(function (store) { return db.objectStoreNames.contains(store); });
+              if (additions.length > 0 || removals.length > 0) {
+                  db.close();
+                  var factory = exports.indexedDBFactory();
+                  var request_1 = factory.open(name, version + 1);
+                  request_1.addEventListener("error", function () { return reject(request_1.error); });
+                  request_1.addEventListener("success", function () { return resolve(request_1.result); });
+                  request_1.addEventListener("upgradeneeded", function () {
+                      var database = request_1.result;
+                      additions.forEach(function (store) { return database.createObjectStore(store, { autoIncrement: true }); });
+                      removals.forEach(function (store) { return database.deleteObjectStore(store); });
+                  });
+              }
+              else {
+                  resolve(db);
+              }
+          });
+      }
+      exports.databaseUpgrade = databaseUpgrade;
       function databaseDelete(name) {
           return new Promise(function (resolve, reject) {
               var factory = exports.indexedDBFactory();
@@ -759,7 +775,7 @@ var smokedb = (function () {
       }());
       exports.Queryable = Queryable;
   });
-  define("src/system/records", ["require", "exports"], function (require, exports) {
+  define("src/system/store", ["require", "exports"], function (require, exports) {
       "use strict";
       function insertMany(database, store, records) {
           return __awaiter(this, void 0, void 0, function () {
@@ -849,7 +865,7 @@ var smokedb = (function () {
       }
       exports.scanAll = scanAll;
   });
-  define("src/store", ["require", "exports", "src/system/records", "src/query"], function (require, exports, records_1, query_1) {
+  define("src/store", ["require", "exports", "src/system/store", "src/query"], function (require, exports, store_1, query_1) {
       "use strict";
       var Store = (function () {
           function Store(database, name) {
@@ -873,21 +889,37 @@ var smokedb = (function () {
           };
           Store.prototype.submit = function () {
               return __awaiter(this, void 0, void 0, function () {
-                  var db;
-                  return __generator(this, function (_a) {
-                      switch (_a.label) {
-                          case 0: return [4 /*yield*/, this.database.db()];
+                  var _this = this;
+                  var db, _a;
+                  return __generator(this, function (_b) {
+                      switch (_b.label) {
+                          case 0:
+                              if (this.inserts.length === 0 &&
+                                  this.updates.length === 0 &&
+                                  this.deletes.length === 0)
+                                  return [2 /*return*/, Promise.resolve()];
+                              return [4 /*yield*/, this.database.db()];
                           case 1:
-                              db = _a.sent();
-                              return [4 /*yield*/, records_1.insertMany(db, this.name, this.inserts)];
+                              db = _b.sent();
+                              if (!(db.objectStoreNames.contains(this.name) === false)) return [3 /*break*/, 3];
+                              return [4 /*yield*/, this.database.upgrade(function (context) { return context.create(_this.name); })];
                           case 2:
-                              _a.sent();
-                              return [4 /*yield*/, records_1.updateMany(db, this.name, this.updates)];
+                              _a = _b.sent();
+                              return [3 /*break*/, 4];
                           case 3:
-                              _a.sent();
-                              return [4 /*yield*/, records_1.deleteMany(db, this.name, this.deletes)];
+                              _a = db;
+                              _b.label = 4;
                           case 4:
-                              _a.sent();
+                              db = _a;
+                              return [4 /*yield*/, store_1.insertMany(db, this.name, this.inserts)];
+                          case 5:
+                              _b.sent();
+                              return [4 /*yield*/, store_1.updateMany(db, this.name, this.updates)];
+                          case 6:
+                              _b.sent();
+                              return [4 /*yield*/, store_1.deleteMany(db, this.name, this.deletes)];
+                          case 7:
+                              _b.sent();
                               this.inserts = [];
                               this.updates = [];
                               this.deletes = [];
@@ -898,23 +930,34 @@ var smokedb = (function () {
           };
           Store.prototype.source = function () {
               var _this = this;
-              return new query_1.Source(function (context) {
-                  _this.database.db().then(function (db) {
-                      records_1.scanAll(db, _this.name, function (element) {
-                          switch (element.type) {
-                              case "data":
-                                  context.next(element.data);
-                                  break;
-                              case "error":
-                                  context.error(element.error);
-                                  break;
-                              case "end":
+              return new query_1.Source(function (context) { return __awaiter(_this, void 0, void 0, function () {
+                  var db;
+                  return __generator(this, function (_a) {
+                      switch (_a.label) {
+                          case 0: return [4 /*yield*/, this.database.db()];
+                          case 1:
+                              db = _a.sent();
+                              if (db.objectStoreNames.contains(this.name) === false) {
                                   context.end();
-                                  break;
-                          }
-                      });
+                                  return [2 /*return*/];
+                              }
+                              store_1.scanAll(db, this.name, function (element) {
+                                  switch (element.type) {
+                                      case "data":
+                                          context.next(element.data);
+                                          break;
+                                      case "error":
+                                          context.error(element.error);
+                                          break;
+                                      case "end":
+                                          context.end();
+                                          break;
+                                  }
+                              });
+                              return [2 /*return*/];
+                      }
                   });
-              });
+              }); });
           };
           Store.prototype.aggregate = function (func, initial) {
               return new query_1.Queryable(this.source()).aggregate(func, initial);
@@ -1004,23 +1047,35 @@ var smokedb = (function () {
       }());
       exports.Store = Store;
   });
-  define("src/database", ["require", "exports", "src/system/database", "src/store"], function (require, exports, database_1, store_1) {
+  define("src/database", ["require", "exports", "src/system/db", "src/store"], function (require, exports, db_1, store_2) {
       "use strict";
+      var DatabaseUpgradeContext = (function () {
+          function DatabaseUpgradeContext() {
+              this.additions = new Array();
+              this.removals = new Array();
+          }
+          DatabaseUpgradeContext.prototype.create = function (name) {
+              this.additions.push(name);
+              return this;
+          };
+          DatabaseUpgradeContext.prototype["delete"] = function (name) {
+              this.removals.push(name);
+              return this;
+          };
+          return DatabaseUpgradeContext;
+      }());
+      exports.DatabaseUpgradeContext = DatabaseUpgradeContext;
       var Database = (function () {
-          function Database(schema) {
-              var _this = this;
+          function Database(name) {
               this._db = undefined;
-              this._schema = schema;
+              this._name = name;
               this._stores = {};
-              this._schema.stores.forEach(function (name) {
-                  return _this._stores[name] = new store_1.Store(_this, name);
-              });
           }
           Database.prototype.store = function (name) {
+              if (this._stores[name] === undefined) {
+                  this._stores[name] = new store_2.Store(this, name);
+              }
               return this._stores[name];
-          };
-          Database.prototype.schema = function () {
-              return this._schema;
           };
           Database.prototype.submit = function () {
               return __awaiter(this, void 0, void 0, function () {
@@ -1048,33 +1103,58 @@ var smokedb = (function () {
                   });
               });
           };
-          Database.prototype.db = function () {
-              var _this = this;
-              return (this._db !== undefined)
-                  ? Promise.resolve(this._db)
-                  : database_1.databaseOpen(this._schema).then(function (db) {
-                      _this._db = db;
-                      return db;
+          Database.prototype.upgrade = function (func) {
+              return __awaiter(this, void 0, void 0, function () {
+                  var context, _a, _b, _c;
+                  return __generator(this, function (_d) {
+                      switch (_d.label) {
+                          case 0:
+                              context = new DatabaseUpgradeContext();
+                              func(context);
+                              _a = this;
+                              _b = db_1.databaseUpgrade;
+                              return [4 /*yield*/, this.db()];
+                          case 1: return [4 /*yield*/, _b.apply(void 0, [_d.sent(),
+                                  context.additions,
+                                  context.removals])];
+                          case 2:
+                              _a._db = _d.sent();
+                              return [2 /*return*/, this._db];
+                      }
                   });
+              });
+          };
+          Database.prototype.db = function () {
+              return __awaiter(this, void 0, void 0, function () {
+                  var _a;
+                  return __generator(this, function (_b) {
+                      switch (_b.label) {
+                          case 0:
+                              if (!(this._db === undefined)) return [3 /*break*/, 2];
+                              _a = this;
+                              return [4 /*yield*/, db_1.databaseOpen(this._name)];
+                          case 1:
+                              _a._db = _b.sent();
+                              _b.label = 2;
+                          case 2: return [2 /*return*/, this._db];
+                      }
+                  });
+              });
           };
           Database["delete"] = function (name) {
-              return database_1.databaseDelete(name);
+              return db_1.databaseDelete(name);
           };
           return Database;
       }());
       exports.Database = Database;
   });
-  define("src/index", ["require", "exports", "src/database"], function (require, exports, database_2) {
+  define("src/index", ["require", "exports", "src/database"], function (require, exports, database_1) {
       "use strict";
-      exports.Database = database_2.Database;
+      exports.Database = database_1.Database;
   });
   define("test/index", ["require", "exports", "src/index"], function (require, exports, index_1) {
       "use strict";
-      var database = new index_1.Database({
-          name: "db0",
-          version: 3,
-          stores: ["customers"]
-      });
+      var database = new index_1.Database("db0");
       function deleteAll() {
           return __awaiter(this, void 0, void 0, function () {
               var store, records;
@@ -1118,7 +1198,7 @@ var smokedb = (function () {
               return __generator(this, function (_a) {
                   switch (_a.label) {
                       case 0:
-                          store = database.store("customers");
+                          store = database.store("customers2");
                           return [4 /*yield*/, store.orderBy(function (n) { return n.key; }).collect()];
                       case 1:
                           records = _a.sent();
@@ -1231,24 +1311,18 @@ var smokedb = (function () {
                           return [4 /*yield*/, deleteAll()];
                       case 1:
                           _d.sent();
-                          return [4 /*yield*/, insert(100)];
+                          return [4 /*yield*/, insert(10)];
                       case 2:
                           _d.sent();
                           return [4 /*yield*/, updateAll()];
                       case 3:
                           _d.sent();
-                          return [4 /*yield*/, updateAsBlob()];
-                      case 4:
-                          _d.sent();
-                          return [4 /*yield*/, readFirstAsBlob()];
-                      case 5:
-                          _d.sent();
                           return [4 /*yield*/, listAll()];
-                      case 6:
+                      case 4:
                           _d.sent();
                           _b = (_a = console).log;
                           return [4 /*yield*/, store.count()];
-                      case 7:
+                      case 5:
                           _b.apply(_a, [_d.sent()]);
                           console.log("done");
                           return [2 /*return*/];

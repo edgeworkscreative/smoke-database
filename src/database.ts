@@ -26,15 +26,53 @@
  
 ---------------------------------------------------------------------------*/
 
-import { databaseOpen, databaseDelete }  from "./system/database"
-import { Queryable, Source }             from "./query"
-import { Store }                         from "./store"
+import { databaseOpen, databaseDelete, databaseUpgrade }  from "./system/db"
+import { Queryable, Source }                              from "./query"
+import { Store }                                          from "./store"
 
-/** Schema: The database schema interface. */
-export interface Schema {
-    name       : string,
-    version    : number,
-    stores     : Array<string>
+export interface IDatabaseUpgradeContext {
+  /**
+   * Will create this store if the store does not exist. Otherwize, no action.
+   * @param {string} name the name of the store to create.
+   * @returns {IDatabaseUpgradeContext}
+   */
+  create(name: string): IDatabaseUpgradeContext
+  /**
+   * Will delete this store if this store exists. Otherwize, no action.
+   * @param {string} name the name of the store to delete.
+   * @returns {IDatabaseUpgradeContext}
+   */
+  delete(name: string): IDatabaseUpgradeContext
+}
+export class DatabaseUpgradeContext implements IDatabaseUpgradeContext {
+  public additions: Array<string>
+  public removals : Array<string>
+  /**
+   * creates a new database upgrade context.
+   * @returns {DatabaseUpgradeContext}
+   */
+  constructor() {
+    this.additions = new Array<string>()
+    this.removals  = new Array<string>()
+  }
+  /**
+   * Will create this store if the store does not exist. Otherwize, no action.
+   * @param {string} name the name of the store to create.
+   * @returns {IDatabaseUpgradeContext}
+   */
+  public create(name: string): IDatabaseUpgradeContext {
+    this.additions.push(name)
+    return this
+  }
+  /**
+   * Will delete this store if this store exists. Otherwize, no action.
+   * @param {string} name the name of the store to delete.
+   * @returns {IDatabaseUpgradeContext}
+   */
+  public delete(name: string): IDatabaseUpgradeContext {
+    this.removals.push(name)
+    return this
+  }
 }
 
 /**
@@ -42,42 +80,35 @@ export interface Schema {
  * Provides an abstraction over a indexedDB database.
  */
 export class Database {
-    private _db     : IDBDatabase
-    private _schema : Schema
-    private _stores : {[name: string]: Store<any>}
-    
+    private _db        : IDBDatabase
+    private _name      : string
+    private _stores    : {[name: string]: Store<any>}
+
     /**
      * creates a new database with the given schema.
      * @param {Schema} schema the schema to use.
      * @returns {Database}
      */
-    constructor(schema: Schema) { 
-      this._db     = undefined
-      this._schema = schema
-      this._stores = {}
-      this._schema.stores.forEach(name => 
-        this._stores[name] = new Store<any>(this, name))
+    constructor(name: string) { 
+      this._db        = undefined
+      this._name      = name
+      this._stores    = {}
     }
 
     /**
-     * returns a handle to the given store.
+     * returns a store within this database.
      * @param {string} name the name of the store.
      * @param {Store<T>} 
      */
     public store<T>(name: string): Store<T> {
-        return this._stores[name] as Store<T>
+      if(this._stores[name] === undefined) {
+        this._stores[name] = new Store<T>(this, name)
+      } return this._stores[name] as Store<T>
     }
 
     /**
-     * returns the schema associated with this database.
-     * returns {Schema}
-     */
-    public schema(): Schema {
-      return this._schema
-    }
-
-    /**
-     * submits any staged data for each store.
+     * submits any staged insert / update / delete for all stores
+     * managed by this database.
      * @returns {Promise<any>}
      */
     public async submit(): Promise<any> {
@@ -87,16 +118,29 @@ export class Database {
     }
 
     /**
-     * returns the IDBDatabase instance associated with this database.
+     * Upgrades this database. This function provides to the 
+     * caller a database upgrade context which allows the caller
+     * to add and remove object stores. 
+     * @param {(context: IDatabaseUpgradeContext) => void} func
+     * @returns {Promise<any>}
+     */
+    public async upgrade(func: (context: IDatabaseUpgradeContext) => void): Promise<IDBDatabase> {
+      let context = new DatabaseUpgradeContext()
+      func(context)
+      this._db = await databaseUpgrade(await this.db(), 
+        context.additions, 
+        context.removals
+      ); return this._db
+    }
+
+    /**
+     * Returns the IDBDatabase instance associated with this database.
      * @returns {Promise<IDBDatabase>}
      */
-    public db(): Promise<IDBDatabase> {
-      return (this._db !== undefined)
-          ? Promise.resolve(this._db)
-          : databaseOpen(this._schema).then(db => {
-              this._db = db
-              return db
-          })
+    public async db(): Promise<IDBDatabase> {
+      if(this._db === undefined) {
+        this._db = await databaseOpen(this._name)
+      } return this._db
     }
 
     /**

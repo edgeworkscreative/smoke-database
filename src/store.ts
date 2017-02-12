@@ -26,7 +26,8 @@
  
 ---------------------------------------------------------------------------*/
 
-import { scanAll, insertMany, updateMany, deleteMany } from "./system/records"
+import { databaseUpgrade }                             from "./system/db"
+import { insertMany, updateMany, deleteMany, scanAll } from "./system/store"
 import { IQueryable, Queryable, Source }               from "./query"
 import { Database }                                    from "./database"
 
@@ -47,7 +48,7 @@ export class Store<T> implements IQueryable<Record<T>> {
   private inserts: Array<T>
   private updates: Array<Record<T>>
   private deletes: Array<Record<T>>
-
+  
   /**
    * creates new store from the given database and store name.
    * @param {Database} database the database.
@@ -61,7 +62,7 @@ export class Store<T> implements IQueryable<Record<T>> {
   }
 
   /**
-   * queues a new record to insert on submit().
+   * stages a record for insertion on submit.
    * @param {T} record the record to insert.
    * @returns {void}
    */
@@ -71,7 +72,7 @@ export class Store<T> implements IQueryable<Record<T>> {
   }
 
   /**
-   * queues a new record to updated on submit().
+   * stages a record for update on submit.
    * @param {T} record the record to update.
    * @returns {void}
    */
@@ -81,7 +82,7 @@ export class Store<T> implements IQueryable<Record<T>> {
   }
 
   /**
-   * queues the given record to be deleted.
+   * states a record for deletion on submit.
    * @param {T} record the record to delete.
    * @returns {void}
    */
@@ -95,7 +96,19 @@ export class Store<T> implements IQueryable<Record<T>> {
    * @returns {Promise<T>}
    */
   public async submit(): Promise<any> {
+    // checks staged records and return early.
+    if(this.inserts.length === 0 &&
+       this.updates.length === 0 &&
+       this.deletes.length === 0) 
+      return Promise.resolve()
+    
+    // check if upgrade is required.
     let db = await this.database.db()
+    db = (db.objectStoreNames.contains(this.name) === false)
+      ? await this.database.upgrade(context => context.create(this.name))
+      : db
+    
+    // insert / update / delete.
     await insertMany(db, this.name, this.inserts)
     await updateMany(db, this.name, this.updates)
     await deleteMany(db, this.name, this.deletes)
@@ -105,19 +118,21 @@ export class Store<T> implements IQueryable<Record<T>> {
   }
 
   /**
-   * returns a new data source to this store.
+   * Returns a new asynchronous data source for this store.
    * @returns {Source<T>}
    */
   public source(): Source<Record<T>> {
-    return new Source<Record<T>>(context => {
-      this.database.db().then(db => {
-        scanAll(db, this.name, element => {
-          switch (element.type) {
-            case "data": context.next(element.data as Record<T>); break;
-            case "error": context.error(element.error); break;
-            case "end": context.end(); break;
-          }
-        })
+    return new Source<Record<T>>(async context => {
+      let db = await this.database.db()
+      if(db.objectStoreNames.contains(this.name) === false) {
+        context.end(); return
+      }
+      scanAll(db, this.name, element => {
+        switch (element.type) {
+          case "data":  context.next (element.data as Record<T>); break;
+          case "error": context.error(element.error); break;
+          case "end":   context.end  (); break;
+        }
       })
     })
   }

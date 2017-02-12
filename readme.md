@@ -4,33 +4,24 @@ Abstraction over indexeddb with LINQ style data queries and projection.
 
 ```javascript
 
-async function example() {
+// create database.
+const database = new smokedb.Database("todo-database")
 
-  // attach to database.
-  const database = new smokedb.Database({
-      name    : "todo-database",
-      version : 1,
-      stores  : [
-        "items"
-      ]
-  })
+// insert records into "items" store.
+await database.store("items")
+  .insert({priority: "critical",  description: "make coffee."})
+  .insert({priority: "medium",    description: "write documentation."})
+  .insert({priority: "high"       description: "calculate 42."})
+  .insert({priority: "critical",  description: "write code."})
+  .insert({priority: "low",       description: "debug internet explorer."})
+  .submit()
 
-  // insert records.
-  await database.store("items")
-    .insert({priority: "critical",  description: "make coffee."})
-    .insert({priority: "medium",    description: "write documentation."})
-    .insert({priority: "high"       description: "calculate 42."})
-    .insert({priority: "critical",  description: "write code."})
-    .insert({priority: "low",       description: "debug internet explorer."})
-    .submit()
+// read records from "items" store.
+let criticals = await database.store ("items")
+  .where (record  => record.value.priority === "critical")
+  .select(record  => record.value)
+  .collect()
 
-  // query records.
-  let urgent = await database
-       .store ("customers")
-       .where (record  => record.value.priority === "critical")
-       .select(record  => record.value)
-       .collect()
-}
 ```
 
 ### overview
@@ -43,88 +34,67 @@ smoke-db is a work in progress.
 
 ### creating a database
 
-The following will create or attach to an existing database. the name and version given correlate to the information passed 
-to the indexeddb ```openDB()``` function. The stores is a simple array of strings that list the stores this database manages.
+The following code will create a database that attaches to a indexeddb database named ```my-crm```.
 
-Note: smoke-db does not make use of store indices. 
-
-Note: stores created with smoke are automatically assign auto incremented keys.
+> If the database does not already exist, smoke will automatically create the database on first request to read / write data.
 
 ```javascript
-const database = new smokedb.Database({
-    name    : "crm-db",
-    version : 1,
-    stores  : [
-      "customers"
-    ]
-})
+const database = new smokedb.Database("my-crm")
 ```
 
 ### insert records
 
-The following will insert two records into the ```customers``` store. note that the inserts
-are staged until a call to ```submit()``` is made. Allowing the caller to insert multiple 
-records for a single ```submit()```. Internally, both inserts happen under the same 
-indexeddb transation.
+The following code will insert records into the object store ```users```. If the store does not
+exist, it will be automatically created.
+
+> All stores created by smoke are set to have auto incremented key values. These keys are numeric, and managed
+by indexeddb. Callers can obtain the keys when querying records. (see record type)
 
 ```typescript
-let store = database
-      .store("customers")
-      .insert({name: "dave",  age: 32})
-      .insert({name: "alice", age: 29})
-      .submit()
+database
+  .store("users")
+  .insert({name: "dave",  age: 32})
+  .insert({name: "alice", age: 29})
+  .insert({name: "bob",   age: 42})
+  .insert({name: "jones", age: 25})
+  .submit()
 ```
 
 ### update records
 
-To update a records, the caller must first query the record(s) being updated, update it, then write it back. The following updates daves ```age``` to 33.
+To update a record, the caller must first query the record. The following preforms a query to 
+read back the user ```dave```. The code then increments the users age, and updates.
 
 ```typescript
-async function update() {
-  let dave = await database
-    .store("customers")
-    .where(record => record.value.name === "dave")
-    .first()
-  
-  dave.value.age = 33;
-  
-  await database
-    .store("customers")
-    .update(dave)
-    .submit()
-}
+let user = await database.store("users")
+  .where(record => record.value.name === "dave")
+  .first()
 
+user.value.age += 1;
+
+await database.store("users")
+  .update(user)
+  .submit()
 ```
 
 ### deleting records
 
-deleting records works in a similar fashion to updating. the code below deletes alice.
+Deleting records works in a similar fashion to updating. First we read the record, followed by a call to delete.
+
+> It is possible to prevent the initial read by storing the key for the record. Calling ```delete({key: 123})``` works equally well.
 
 ```typescript
-async function delete() {
-  let alice = await database
-    .store("customers")
-    .where(record => record.value.name === "alice")
-    .first()
-  
-  await database
-    .store("customers")
-    .delete(dave)
-    .submit()
-}
+let user = await database.store("users")
+  .where(record => record.value.name === "alice")
+  .first()
+
+await database.store("users")
+  .delete(user)
+  .submit()
 ```
+### the record type
 
-### querying records
-
-Records can be read back from stores. Smoke provides a query interface fashioned on asynchronous version of .NET IQueryable<T> interface.
-
-Like IQueryable<T>, reading does not begin until the caller requests a result, allowing operations to be chained and
-deferred. It is important to note that currently all queries require a complete linear scan of the store, making 
-stores with high record counts somewhat impractical. This aspect may be addressed in future.
-
-#### record type
-
-Stores return records of the following type.
+All read / query operations return the type ```Record<T>```. The record type looks as follows.
 
 ```typescript
 interface Record<T> {
@@ -132,26 +102,68 @@ interface Record<T> {
   value : T         
 }
 ```
-Where ```value``` is the record and ```key``` is a auto incremented key.
+Callers need to be mindful when filtering and mapping records, that the actual data for the record
+is housed under the ```value``` property, with the auto-generated key available on the ```key```
+property of the record.
 
-#### examples
+### querying records
+
+Records can be queried from stores. Smoke-DB provides a query interface fashioned on a asynchronous version of .NET ```IQueryable<T>``` interface.
+In fact, the store type implements a version of ```IQueryable<Record<T>>```, meaning query functions are available on the store
+directly. Like ```IQueryable<T>```, reading does not begin until the caller requests a result, allowing operations to be chained and
+deferred. 
+
+It is important to note that currently, ALL queries require a complete linear scan of the store, making 
+stores with high record counts somewhat impractical. This aspect may be addressed in future.
+
+The following table outlines the full list of queries available on stores.
+
+| method | description |
+| ---    | ---         |
+| ```aggregate<U>(func: (acc: U, value: T, index: number) => U, initial: U): Promise<U>```  | Applies an accumulator function over a sequence.      |
+| ```all(func: (value: T, index: number) => boolean): Promise<boolean>```                   | Determines whether all the elements of a sequence satisfy a condition. |
+| ```any(func: (value: T, index: number) => boolean): Promise<boolean>```                   | Determines whether a sequence contains any elements that meet this criteria. |
+| ```average(func: (value: T, index: number) => number): Promise<number>```                 | Computes the average of a sequence of numeric values. |
+| ```cast<U>(): IQueryable<U>```                                                            | preforms a type cast from the source type T to U. Only useful to typescript. |
+| ```collect(): Promise<Array<T>>```                                                        | Collects the results of this queryable into a array. |
+| ```concat(queryable: IQueryable<T>): IQueryable<T>```                                     | Concatenates two queryable sequences returning a new queryable that enumerates the first, then the second. |
+| ```count(): Promise<number>```                                                            | Returns the number of elements in a sequence. |
+| ```distinct(): IQueryable<T>```                                                           | Returns distinct elements from a sequence by using the default equality comparer to compare values. |
+| ```each(func: (value: T, index: number) => void): Promise<any>```                         | Enumerates each element in this sequence. |
+| ```elementAt(index: number): Promise<T> ```                                               | Returns the element at the specified index, if no element exists, reject. |
+| ```elementAtOrDefault(index: number): Promise<T>```                                       | Returns the element at the specified index, if no element exists, resolve undefined. |
+| ```first(): Promise<T>```                                                                 | Returns the first element. if no element exists, reject. |
+| ```firstOrDefault(): Promise<T> ```                                                       | Returns the first element. if no element exists, resolve undefined. |
+| ```intersect(queryable: IQueryable<T>): IQueryable<T>```                                  | Produces the set intersection of two sequences by using the default equality comparer to compare values. |
+| ```last(): Promise<T>```                                                                  | Returns the last element in this sequence. if empty, reject. |
+| ```lastOrDefault(): Promise<T> ```                                                        | Returns the last element in this sequence. if empty, resolve undefined. |
+| ```orderBy<U>(func: (value: T) => U): IQueryable<T>```                                    | Sorts the elements of a sequence in ascending order according to a key. |
+| ```orderByDescending<U>(func: (value: T) => U): IQueryable<T>```                          | Sorts the elements of a sequence in descending order according to a key. |
+| ```reverse(): IQueryable<T>```                                                            | Inverts the order of the elements in a sequence. |
+| ```select<U>(func: (value: T, index: number) => U): IQueryable<U>```                      | Projects each element of a sequence into a new form. |
+| ```selectMany<U>(func: (value: T, index: number) => Array<U>): IQueryable<U>```           | Projects each element of a sequence to an IEnumerable<T> and combines the resulting sequences into one sequence. |
+| ```single(func: (value: T, index: number) => boolean): Promise<T>```                      | Returns the only element of a sequence that satisfies a specified condition. |
+| ```singleOrDefault(func: (value: T, index: number) => boolean): Promise<T>```             | Returns the only element of a sequence that satisfies a specified condition or null if no such element exists. |
+| ```skip(count: number): IQueryable<T>```                                                  | Bypasses a specified number of elements in a sequence and then returns the remaining elements. |
+| ```sum(func: (value: T, index: number) => number): Promise<number>```                     | Computes the sum of the sequence of numeric values. |
+| ```take(count: number): IQueryable<T>```                                                  | Returns a specified number of contiguous elements from the start of a sequence. |
+| ```where(func: (value: T, index: number) => boolean): IQueryable<T>```                    | Filters a sequence of values based on a predicate. |
+
+### examples
 count records in store.
 ```typescript
-let count = await database
-    .store("customers")
-    .count()
+let count = await database.store("users").count()
 ```
 map records to customers and collect the result as a array.
 ```typescript
-let customers = await database
-    .store("customers")
-    .select(record => record.value)
-    .collect()
+let customers = await database.store("users")
+  .select(record => record.value)
+  .collect()
 ```
 order customers by lastname
 ```typescript
 let ordered = await database
-  .store  ("customers")
+  .store  ("users")
   .select (record => record.value)
   .orderBy(customer => customer.lastname)
   .each   (customer => {
@@ -161,7 +173,12 @@ let ordered = await database
 compute the average age of customers
 ```typescript
 let average = await database
-  .store   ("customers")
+  .store   ("users")
   .select  (record => record.value.age)
   .average (age => age)
 ```
+
+### query operators
+
+
+

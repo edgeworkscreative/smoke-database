@@ -1,12 +1,9 @@
 import {Database} from "../src/index"
 
-//Database.delete("db0")
 
-const database = new Database({
-    name    : "db0",
-    version : 3,
-    stores  : ["customers"]
-})
+
+
+const database = new Database("db0")
 
 async function deleteAll() {
   let store = database.store<any>("customers")
@@ -23,7 +20,7 @@ async function insert(count: number) {
 }
 
 async function listAll() {
-  let store = database.store<any>("customers")
+  let store = database.store<any>("customers2")
   let records = await store.orderBy(n => n.key).collect()
   records.forEach(record => {
     console.log(record)
@@ -74,10 +71,10 @@ async function readFirstAsBlob() {
 async function test() {
   let store = database.store<any>("customers")
   await deleteAll()
-  await insert(100)
+  await insert(10)
   await updateAll()
-  await updateAsBlob()
-  await readFirstAsBlob()
+  //await updateAsBlob()
+  //await readFirstAsBlob()
   await listAll()
   console.log(await store.count())
   console.log("done")

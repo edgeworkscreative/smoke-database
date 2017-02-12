@@ -39,34 +39,50 @@ export const indexedDBFactory = (): IDBFactory => {
       || host.shimIndexedDB;
 }
 
-/** 
- * Schema 
- * The database schema interface. 
- */
-export interface Schema {
-    name       : string,
-    version    : number,
-    stores     : Array<string>
-}
-
 /**
  * opens a database connection.
  * @param {Schema} schema the schema for this database.
  * @param {Promise<IDBDatabase>} 
  */
-export function databaseOpen(schema: Schema): Promise<IDBDatabase> {
+export function databaseOpen(name: string): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     let factory             = indexedDBFactory()
-    let request             = factory.open(schema.name, schema.version)
-    request.addEventListener("error", () => reject(request.error))
-    request.addEventListener("success", () => resolve(request.result))
-    request.addEventListener("upgradeneeded", () => {
-      let database = request.result as IDBDatabase
-      schema.stores.forEach(store => {
-        if(database.objectStoreNames.contains(store)) return
-        let objectStore = database.createObjectStore(store, { autoIncrement: true })
+    let request             = factory.open(name)
+    request.addEventListener("error",         () => reject (request.error))
+    request.addEventListener("success",       () => resolve(request.result as IDBDatabase))
+  })
+}
+
+/**
+ * upgrades a existing database connection.
+ * @param {IDBDatabase}   database  an existing database.
+ * @param {Array<string>} additions an array of stores to add.
+ * @param {Array<string>} removals  an array of stores to remove.
+ * @param {Promise<IDBDatabase>} 
+ */
+export function databaseUpgrade(db: IDBDatabase, additions: Array<string>, removals: Array<string>) : Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    // extract database info, build add / remove manifest.
+    let name    = db.name
+    let version = db.version
+    additions   = additions.filter(store => !db.objectStoreNames.contains(store))
+    removals    = removals.filter (store =>  db.objectStoreNames.contains(store))
+
+    // reopen database with version + 1, run manifest.
+    if(additions.length > 0 || removals.length > 0) {
+      db.close()
+      let factory             = indexedDBFactory()
+      let request             = factory.open(name, version + 1)
+      request.addEventListener("error",         () => reject (request.error))
+      request.addEventListener("success",       () => resolve(request.result as IDBDatabase))
+      request.addEventListener("upgradeneeded", () => {
+        let database = request.result as IDBDatabase
+        additions.forEach(store => database.createObjectStore(store, { autoIncrement: true }))
+        removals.forEach (store  => database.deleteObjectStore(store))
       })
-    })
+    } else {
+      resolve(db)
+    }
   })
 }
 
@@ -79,7 +95,7 @@ export function databaseDelete(name: string): Promise<any> {
   return new Promise((resolve, reject) => {
     let factory       = indexedDBFactory()
     let request       = factory.deleteDatabase(name)
-    request.addEventListener("error",   () => reject(request.error))
+    request.addEventListener("error",   () => reject (request.error))
     request.addEventListener("success", () => resolve(request.result))
   })
 }
