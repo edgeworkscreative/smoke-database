@@ -869,22 +869,22 @@ var smokedb = (function () {
       "use strict";
       var Store = (function () {
           function Store(database, name) {
-              this.database = database;
-              this.name = name;
-              this.inserts = new Array();
-              this.updates = new Array();
-              this.deletes = new Array();
+              this._database = database;
+              this._name = name;
+              this._inserts = new Array();
+              this._updates = new Array();
+              this._deletes = new Array();
           }
           Store.prototype.insert = function (record) {
-              this.inserts.push(record);
+              this._inserts.push(record);
               return this;
           };
           Store.prototype.update = function (record) {
-              this.updates.push(record);
+              this._updates.push(record);
               return this;
           };
           Store.prototype["delete"] = function (record) {
-              this.deletes.push(record);
+              this._deletes.push(record);
               return this;
           };
           Store.prototype.submit = function () {
@@ -894,15 +894,17 @@ var smokedb = (function () {
                   return __generator(this, function (_b) {
                       switch (_b.label) {
                           case 0:
-                              if (this.inserts.length === 0 &&
-                                  this.updates.length === 0 &&
-                                  this.deletes.length === 0)
+                              if (this._inserts.length === 0 &&
+                                  this._updates.length === 0 &&
+                                  this._deletes.length === 0)
                                   return [2 /*return*/, Promise.resolve()];
-                              return [4 /*yield*/, this.database.current()];
+                              return [4 /*yield*/, this._database.current()];
                           case 1:
                               db = _b.sent();
-                              if (!(db.objectStoreNames.contains(this.name) === false)) return [3 /*break*/, 3];
-                              return [4 /*yield*/, this.database.upgrade(function (context) { return context.create(_this.name); })];
+                              if (!(db.objectStoreNames.contains(this._name) === false)) return [3 /*break*/, 3];
+                              return [4 /*yield*/, this._database.upgrade(function (context) {
+                                      return context.create(_this._name);
+                                  })];
                           case 2:
                               _a = _b.sent();
                               return [3 /*break*/, 4];
@@ -911,18 +913,18 @@ var smokedb = (function () {
                               _b.label = 4;
                           case 4:
                               db = _a;
-                              return [4 /*yield*/, store_1.insertMany(db, this.name, this.inserts)];
+                              return [4 /*yield*/, store_1.insertMany(db, this._name, this._inserts)];
                           case 5:
                               _b.sent();
-                              return [4 /*yield*/, store_1.updateMany(db, this.name, this.updates)];
+                              return [4 /*yield*/, store_1.updateMany(db, this._name, this._updates)];
                           case 6:
                               _b.sent();
-                              return [4 /*yield*/, store_1.deleteMany(db, this.name, this.deletes)];
+                              return [4 /*yield*/, store_1.deleteMany(db, this._name, this._deletes)];
                           case 7:
                               _b.sent();
-                              this.inserts = [];
-                              this.updates = [];
-                              this.deletes = [];
+                              this._inserts = [];
+                              this._updates = [];
+                              this._deletes = [];
                               return [2 /*return*/];
                       }
                   });
@@ -934,14 +936,14 @@ var smokedb = (function () {
                   var db;
                   return __generator(this, function (_a) {
                       switch (_a.label) {
-                          case 0: return [4 /*yield*/, this.database.current()];
+                          case 0: return [4 /*yield*/, this._database.current()];
                           case 1:
                               db = _a.sent();
-                              if (db.objectStoreNames.contains(this.name) === false) {
+                              if (db.objectStoreNames.contains(this._name) === false) {
                                   context.end();
                                   return [2 /*return*/];
                               }
-                              store_1.scanAll(db, this.name, function (element) {
+                              store_1.scanAll(db, this._name, function (element) {
                                   switch (element.type) {
                                       case "data":
                                           context.next(element.data);

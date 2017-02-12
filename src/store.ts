@@ -45,9 +45,11 @@ export interface Record<T> {
  * Encapsulates operations preformed on a indexeddb store.
  */
 export class Store<T> implements IQueryable<Record<T>> {
-  private inserts: Array<T>
-  private updates: Array<Record<T>>
-  private deletes: Array<Record<T>>
+  private _database: Database
+  private _name    : string
+  private _inserts : Array<T>
+  private _updates : Array<Record<T>>
+  private _deletes : Array<Record<T>>
 
   /**
    * creates new store from the given database and store name.
@@ -55,10 +57,12 @@ export class Store<T> implements IQueryable<Record<T>> {
    * @param {string} name the name of the store.
    * @returns {Store<T>}
    */
-  constructor(private database: Database, private name: string) {
-    this.inserts = new Array<T>()
-    this.updates = new Array<Record<T>>()
-    this.deletes = new Array<Record<T>>()
+  constructor(database: Database, name: string) {
+    this._database = database
+    this._name     = name
+    this._inserts  = new Array<T>()
+    this._updates  = new Array<Record<T>>()
+    this._deletes  = new Array<Record<T>>()
   }
 
   /**
@@ -67,7 +71,7 @@ export class Store<T> implements IQueryable<Record<T>> {
    * @returns {void}
    */
   public insert(record: T): Store<T> {
-    this.inserts.push(record)
+    this._inserts.push(record)
     return this
   }
 
@@ -77,7 +81,7 @@ export class Store<T> implements IQueryable<Record<T>> {
    * @returns {void}
    */
   public update(record: Record<T>): Store<T> {
-    this.updates.push(record)
+    this._updates.push(record)
     return this
   }
 
@@ -87,7 +91,7 @@ export class Store<T> implements IQueryable<Record<T>> {
    * @returns {void}
    */
   public delete(record: Record<T>): Store<T> {
-    this.deletes.push(record)
+    this._deletes.push(record)
     return this
   }
 
@@ -97,24 +101,25 @@ export class Store<T> implements IQueryable<Record<T>> {
    */
   public async submit(): Promise<any> {
     // checks staged records and return early.
-    if(this.inserts.length === 0 &&
-       this.updates.length === 0 &&
-       this.deletes.length === 0) 
+    if(this._inserts.length === 0 &&
+       this._updates.length === 0 &&
+       this._deletes.length === 0) 
       return Promise.resolve()
     
     // check if upgrade is required.
-    let db = await this.database.current()
-    db = (db.objectStoreNames.contains(this.name) === false)
-      ? await this.database.upgrade(context => context.create(this.name))
+    let db = await this._database.current()
+    db = (db.objectStoreNames.contains(this._name) === false)
+      ? await this._database.upgrade(context => 
+          context.create(this._name))
       : db
     
     // insert / update / delete.
-    await insertMany(db, this.name, this.inserts)
-    await updateMany(db, this.name, this.updates)
-    await deleteMany(db, this.name, this.deletes)
-    this.inserts = []
-    this.updates = []
-    this.deletes = []
+    await insertMany(db, this._name, this._inserts)
+    await updateMany(db, this._name, this._updates)
+    await deleteMany(db, this._name, this._deletes)
+    this._inserts = []
+    this._updates = []
+    this._deletes = []
   }
 
   /**
@@ -123,15 +128,15 @@ export class Store<T> implements IQueryable<Record<T>> {
    */
   public source(): Source<Record<T>> {
     return new Source<Record<T>>(async context => {
-      let db = await this.database.current()
-      if(db.objectStoreNames.contains(this.name) === false) {
+      let db = await this._database.current()
+      if(db.objectStoreNames.contains(this._name) === false) {
         context.end(); return
       }
-      scanAll(db, this.name, element => {
+      scanAll(db, this._name, element => {
         switch (element.type) {
           case "data":  context.next (element.data as Record<T>); break;
-          case "error": context.error(element.error); break;
-          case "end":   context.end  (); break;
+          case "error": context.error(element.error);             break;
+          case "end":   context.end  ();                          break;
         }
       })
     })
