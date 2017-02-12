@@ -18,8 +18,8 @@ await database.store("items")
 
 // read records from "items" store.
 let criticals = await database.store ("items")
-  .where (record  =&gt; record.value.priority === "critical")
-  .select(record  =&gt; record.value)
+  .where (record  => record.value.priority === "critical")
+  .select(record  => record.value)
   .collect()
 
 ```
@@ -67,7 +67,7 @@ read back the user ```dave```. The code then increments the users age, and updat
 
 ```typescript
 let user = await database.store("users")
-  .where(record =&gt; record.value.name === "dave")
+  .where(record => record.value.name === "dave")
   .first()
 
 user.value.age += 1;
@@ -85,7 +85,7 @@ Deleting records works in a similar fashion to updating. First we read the recor
 
 ```typescript
 let user = await database.store("users")
-  .where(record =&gt; record.value.name === "alice")
+  .where(record => record.value.name === "alice")
   .first()
 
 await database.store("users")
@@ -97,7 +97,7 @@ await database.store("users")
 All read / query operations return the type ```Record<T>```. The record type looks as follows.
 
 ```typescript
-interface Record&lt;T&gt; {
+interface Record<T> {
   key   : number 
   value : T         
 }
@@ -157,28 +157,28 @@ let count = await database.store("users").count()
 map records to customers and collect the result as a array.
 ```typescript
 let customers = await database.store("users")
-  .select(record =&gt; record.value)
+  .select(record => record.value)
   .collect()
 ```
 order customers by lastname
 ```typescript
 let ordered = await database
   .store  ("users")
-  .select (record =&gt; record.value)
-  .orderBy(customer =&gt; customer.lastname)
-  .each   (customer =&gt; {
-    console.log(customer)
-  })
+  .select (record => record.value)
+  .orderBy(customer => customer.lastname)
+  .collect()
 ```
 compute the average age of customers
 ```typescript
 let average = await database
   .store   ("users")
-  .select  (record =&gt; record.value.age)
-  .average (age =&gt; age)
+  .select  (record => record.value.age)
+  .average (age => age)
 ```
 
-### query operators
+### license
+
+MIT
 
 
 
