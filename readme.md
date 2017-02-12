@@ -18,8 +18,8 @@ await database.store("items")
 
 // read records from "items" store.
 let criticals = await database.store ("items")
-  .where (record  => record.value.priority === "critical")
-  .select(record  => record.value)
+  .where (record  =&gt; record.value.priority === "critical")
+  .select(record  =&gt; record.value)
   .collect()
 
 ```
@@ -36,7 +36,7 @@ smoke-db is a work in progress.
 
 The following code will create a database that attaches to a indexeddb database named ```my-crm```.
 
-> If the database does not already exist, smoke will automatically create the database on first request to read / write data.
+&gt; If the database does not already exist, smoke will automatically create the database on first request to read / write data.
 
 ```javascript
 const database = new smokedb.Database("my-crm")
@@ -47,7 +47,7 @@ const database = new smokedb.Database("my-crm")
 The following code will insert records into the object store ```users```. If the store does not
 exist, it will be automatically created.
 
-> All stores created by smoke are set to have auto incremented key values. These keys are numeric, and managed
+&gt; All stores created by smoke are set to have auto incremented key values. These keys are numeric, and managed
 by indexeddb. Callers can obtain the keys when querying records. (see record type)
 
 ```typescript
@@ -67,7 +67,7 @@ read back the user ```dave```. The code then increments the users age, and updat
 
 ```typescript
 let user = await database.store("users")
-  .where(record => record.value.name === "dave")
+  .where(record =&gt; record.value.name === "dave")
   .first()
 
 user.value.age += 1;
@@ -81,11 +81,11 @@ await database.store("users")
 
 Deleting records works in a similar fashion to updating. First we read the record, followed by a call to delete.
 
-> It is possible to prevent the initial read by storing the key for the record. Calling ```delete({key: 123})``` works equally well.
+&gt; It is possible to prevent the initial read by storing the key for the record. Calling ```delete({key: 123})``` works equally well.
 
 ```typescript
 let user = await database.store("users")
-  .where(record => record.value.name === "alice")
+  .where(record =&gt; record.value.name === "alice")
   .first()
 
 await database.store("users")
@@ -97,7 +97,7 @@ await database.store("users")
 All read / query operations return the type ```Record<T>```. The record type looks as follows.
 
 ```typescript
-interface Record<T> {
+interface Record&lt;T&gt; {
   key   : number 
   value : T         
 }
@@ -120,34 +120,34 @@ The following table outlines the full list of queries available on stores.
 
 | method | description |
 | ---    | ---         |
-| ```aggregate<U>(func: (acc: U, value: T, index: number) => U, initial: U): Promise<U>```  | Applies an accumulator function over a sequence.      |
-| ```all(func: (value: T, index: number) => boolean): Promise<boolean>```                   | Determines whether all the elements of a sequence satisfy a condition. |
-| ```any(func: (value: T, index: number) => boolean): Promise<boolean>```                   | Determines whether a sequence contains any elements that meet this criteria. |
-| ```average(func: (value: T, index: number) => number): Promise<number>```                 | Computes the average of a sequence of numeric values. |
-| ```cast<U>(): IQueryable<U>```                                                            | preforms a type cast from the source type T to U. Only useful to typescript. |
-| ```collect(): Promise<Array<T>>```                                                        | Collects the results of this queryable into a array. |
-| ```concat(queryable: IQueryable<T>): IQueryable<T>```                                     | Concatenates two queryable sequences returning a new queryable that enumerates the first, then the second. |
-| ```count(): Promise<number>```                                                            | Returns the number of elements in a sequence. |
-| ```distinct(): IQueryable<T>```                                                           | Returns distinct elements from a sequence by using the default equality comparer to compare values. |
-| ```each(func: (value: T, index: number) => void): Promise<any>```                         | Enumerates each element in this sequence. |
-| ```elementAt(index: number): Promise<T> ```                                               | Returns the element at the specified index, if no element exists, reject. |
-| ```elementAtOrDefault(index: number): Promise<T>```                                       | Returns the element at the specified index, if no element exists, resolve undefined. |
-| ```first(): Promise<T>```                                                                 | Returns the first element. if no element exists, reject. |
-| ```firstOrDefault(): Promise<T> ```                                                       | Returns the first element. if no element exists, resolve undefined. |
-| ```intersect(queryable: IQueryable<T>): IQueryable<T>```                                  | Produces the set intersection of two sequences by using the default equality comparer to compare values. |
-| ```last(): Promise<T>```                                                                  | Returns the last element in this sequence. if empty, reject. |
-| ```lastOrDefault(): Promise<T> ```                                                        | Returns the last element in this sequence. if empty, resolve undefined. |
-| ```orderBy<U>(func: (value: T) => U): IQueryable<T>```                                    | Sorts the elements of a sequence in ascending order according to a key. |
-| ```orderByDescending<U>(func: (value: T) => U): IQueryable<T>```                          | Sorts the elements of a sequence in descending order according to a key. |
-| ```reverse(): IQueryable<T>```                                                            | Inverts the order of the elements in a sequence. |
-| ```select<U>(func: (value: T, index: number) => U): IQueryable<U>```                      | Projects each element of a sequence into a new form. |
-| ```selectMany<U>(func: (value: T, index: number) => Array<U>): IQueryable<U>```           | Projects each element of a sequence to an IEnumerable<T> and combines the resulting sequences into one sequence. |
-| ```single(func: (value: T, index: number) => boolean): Promise<T>```                      | Returns the only element of a sequence that satisfies a specified condition. |
-| ```singleOrDefault(func: (value: T, index: number) => boolean): Promise<T>```             | Returns the only element of a sequence that satisfies a specified condition or null if no such element exists. |
-| ```skip(count: number): IQueryable<T>```                                                  | Bypasses a specified number of elements in a sequence and then returns the remaining elements. |
-| ```sum(func: (value: T, index: number) => number): Promise<number>```                     | Computes the sum of the sequence of numeric values. |
-| ```take(count: number): IQueryable<T>```                                                  | Returns a specified number of contiguous elements from the start of a sequence. |
-| ```where(func: (value: T, index: number) => boolean): IQueryable<T>```                    | Filters a sequence of values based on a predicate. |
+| aggregate&lt;U&gt;(func: (acc: U, value: T, index: number) =&gt; U, initial: U): Promise&lt;U&gt;  | Applies an accumulator function over a sequence.      |
+| all(func: (value: T, index: number) =&gt; boolean): Promise&lt;boolean&gt;                   | Determines whether all the elements of a sequence satisfy a condition. |
+| any(func: (value: T, index: number) =&gt; boolean): Promise&lt;boolean&gt;                   | Determines whether a sequence contains any elements that meet this criteria. |
+| average(func: (value: T, index: number) =&gt; number): Promise&lt;number&gt;                 | Computes the average of a sequence of numeric values. |
+| cast&lt;U&gt;(): IQueryable&lt;U&gt;                                                            | preforms a type cast from the source type T to U. Only useful to typescript. |
+| collect(): Promise&lt;Array&lt;T&gt;&gt;                                                        | Collects the results of this queryable into a array. |
+| concat(queryable: IQueryable&lt;T&gt;): IQueryable&lt;T&gt;                                     | Concatenates two queryable sequences returning a new queryable that enumerates the first, then the second. |
+| count(): Promise&lt;number&gt;                                                            | Returns the number of elements in a sequence. |
+| distinct(): IQueryable&lt;T&gt;                                                           | Returns distinct elements from a sequence by using the default equality comparer to compare values. |
+| each(func: (value: T, index: number) =&gt; void): Promise&lt;any&gt;                         | Enumerates each element in this sequence. |
+| elementAt(index: number): Promise&lt;T&gt;                                                | Returns the element at the specified index, if no element exists, reject. |
+| elementAtOrDefault(index: number): Promise&lt;T&gt;                                       | Returns the element at the specified index, if no element exists, resolve undefined. |
+| first(): Promise&lt;T&gt;                                                                 | Returns the first element. if no element exists, reject. |
+| firstOrDefault(): Promise&lt;T&gt;                                                        | Returns the first element. if no element exists, resolve undefined. |
+| intersect(queryable: IQueryable&lt;T&gt;): IQueryable&lt;T&gt;                                  | Produces the set intersection of two sequences by using the default equality comparer to compare values. |
+| last(): Promise&lt;T&gt;                                                                  | Returns the last element in this sequence. if empty, reject. |
+| lastOrDefault(): Promise&lt;T&gt;                                                         | Returns the last element in this sequence. if empty, resolve undefined. |
+| orderBy&lt;U&gt;(func: (value: T) =&gt; U): IQueryable&lt;T&gt;                                    | Sorts the elements of a sequence in ascending order according to a key. |
+| orderByDescending&lt;U&gt;(func: (value: T) =&gt; U): IQueryable&lt;T&gt;                          | Sorts the elements of a sequence in descending order according to a key. |
+| reverse(): IQueryable&lt;T&gt;                                                            | Inverts the order of the elements in a sequence. |
+| select&lt;U&gt;(func: (value: T, index: number) =&gt; U): IQueryable&lt;U&gt;                      | Projects each element of a sequence into a new form. |
+| selectMany&lt;U&gt;(func: (value: T, index: number) =&gt; Array&lt;U&gt;): IQueryable&lt;U&gt;           | Projects each element of a sequence to an IEnumerable&lt;T&gt; and combines the resulting sequences into one sequence. |
+| single(func: (value: T, index: number) =&gt; boolean): Promise&lt;T&gt;                      | Returns the only element of a sequence that satisfies a specified condition. |
+| singleOrDefault(func: (value: T, index: number) =&gt; boolean): Promise&lt;T&gt;             | Returns the only element of a sequence that satisfies a specified condition or null if no such element exists. |
+| skip(count: number): IQueryable&lt;T&gt;                                                  | Bypasses a specified number of elements in a sequence and then returns the remaining elements. |
+| sum(func: (value: T, index: number) =&gt; number): Promise&lt;number&gt;                     | Computes the sum of the sequence of numeric values. |
+| take(count: number): IQueryable&lt;T&gt;                                                   | Returns a specified number of contiguous elements from the start of a sequence. |
+| where(func: (value: T, index: number) =&gt; boolean): IQueryable&lt;T&gt;                     | Filters a sequence of values based on a predicate. |
 
 ### examples
 count records in store.
@@ -157,16 +157,16 @@ let count = await database.store("users").count()
 map records to customers and collect the result as a array.
 ```typescript
 let customers = await database.store("users")
-  .select(record => record.value)
+  .select(record =&gt; record.value)
   .collect()
 ```
 order customers by lastname
 ```typescript
 let ordered = await database
   .store  ("users")
-  .select (record => record.value)
-  .orderBy(customer => customer.lastname)
-  .each   (customer => {
+  .select (record =&gt; record.value)
+  .orderBy(customer =&gt; customer.lastname)
+  .each   (customer =&gt; {
     console.log(customer)
   })
 ```
@@ -174,8 +174,8 @@ compute the average age of customers
 ```typescript
 let average = await database
   .store   ("users")
-  .select  (record => record.value.age)
-  .average (age => age)
+  .select  (record =&gt; record.value.age)
+  .average (age =&gt; age)
 ```
 
 ### query operators
