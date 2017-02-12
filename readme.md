@@ -5,20 +5,20 @@ Abstraction over indexeddb with LINQ style data queries and projection.
 ```javascript
 
 // create database.
-const database = new smokedb.Database("todo-database")
+const database = new smokedb.Database("myapp")
 
-// insert records into "items" store.
-await database.store("items")
-  .insert({priority: "critical",  description: "make coffee."})
-  .insert({priority: "medium",    description: "write documentation."})
-  .insert({priority: "high"       description: "calculate 42."})
-  .insert({priority: "critical",  description: "write code."})
-  .insert({priority: "low",       description: "debug internet explorer."})
+// insert records into "users" store.
+await database.store("users")
+  .insert({name: "dave",  email: "dave@domain.com" })
+  .insert({name: "alice", email: "alice@domain.com"})
+  .insert({name: "jones"  email: "jones@domain.com"})
+  .insert({name: "mary",  email: "mary@domain.com" })
+  .insert({name: "tim",   email: "tim@domain.com"  })
   .submit()
 
-// read records from "items" store.
-let criticals = await database.store ("items")
-  .where (record  => record.value.priority === "critical")
+// read records from "users" store.
+let user = await database.store ("users")
+  .where (record  => record.value.email === "jones@domain.com")
   .select(record  => record.value)
   .collect()
 
