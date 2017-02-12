@@ -118,31 +118,32 @@ export class Database {
     }
 
     /**
+     * Returns the current IDBDatabase instance associated with this database.
+     * @returns {Promise<IDBDatabase>}
+     */
+    public async current(): Promise<IDBDatabase> {
+      if(this._db === undefined) {
+        this._db = await databaseOpen(this._name)
+      } return this._db
+    }
+
+    /**
      * Upgrades this database. This function provides to the 
      * caller a database upgrade context which allows the caller
-     * to add and remove object stores. 
+     * to add and remove object stores. The a new IDBDatabase
+     * instance will be returned to the caller.
      * @param {(context: IDatabaseUpgradeContext) => void} func
      * @returns {Promise<any>}
      */
     public async upgrade(func: (context: IDatabaseUpgradeContext) => void): Promise<IDBDatabase> {
       let context = new DatabaseUpgradeContext()
       func(context)
-      this._db = await databaseUpgrade(await this.db(), 
+      this._db = await databaseUpgrade(await this.current(), 
         context.additions, 
         context.removals
       ); return this._db
     }
-
-    /**
-     * Returns the IDBDatabase instance associated with this database.
-     * @returns {Promise<IDBDatabase>}
-     */
-    public async db(): Promise<IDBDatabase> {
-      if(this._db === undefined) {
-        this._db = await databaseOpen(this._name)
-      } return this._db
-    }
-
+    
     /**
      * deletes this database with the given name.
      * @param {string} name the name of the database to delete.

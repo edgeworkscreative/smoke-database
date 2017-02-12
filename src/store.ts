@@ -48,7 +48,7 @@ export class Store<T> implements IQueryable<Record<T>> {
   private inserts: Array<T>
   private updates: Array<Record<T>>
   private deletes: Array<Record<T>>
-  
+
   /**
    * creates new store from the given database and store name.
    * @param {Database} database the database.
@@ -103,7 +103,7 @@ export class Store<T> implements IQueryable<Record<T>> {
       return Promise.resolve()
     
     // check if upgrade is required.
-    let db = await this.database.db()
+    let db = await this.database.current()
     db = (db.objectStoreNames.contains(this.name) === false)
       ? await this.database.upgrade(context => context.create(this.name))
       : db
@@ -123,7 +123,7 @@ export class Store<T> implements IQueryable<Record<T>> {
    */
   public source(): Source<Record<T>> {
     return new Source<Record<T>>(async context => {
-      let db = await this.database.db()
+      let db = await this.database.current()
       if(db.objectStoreNames.contains(this.name) === false) {
         context.end(); return
       }

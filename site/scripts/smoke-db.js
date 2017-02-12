@@ -898,7 +898,7 @@ var smokedb = (function () {
                                   this.updates.length === 0 &&
                                   this.deletes.length === 0)
                                   return [2 /*return*/, Promise.resolve()];
-                              return [4 /*yield*/, this.database.db()];
+                              return [4 /*yield*/, this.database.current()];
                           case 1:
                               db = _b.sent();
                               if (!(db.objectStoreNames.contains(this.name) === false)) return [3 /*break*/, 3];
@@ -934,7 +934,7 @@ var smokedb = (function () {
                   var db;
                   return __generator(this, function (_a) {
                       switch (_a.label) {
-                          case 0: return [4 /*yield*/, this.database.db()];
+                          case 0: return [4 /*yield*/, this.database.current()];
                           case 1:
                               db = _a.sent();
                               if (db.objectStoreNames.contains(this.name) === false) {
@@ -1103,28 +1103,7 @@ var smokedb = (function () {
                   });
               });
           };
-          Database.prototype.upgrade = function (func) {
-              return __awaiter(this, void 0, void 0, function () {
-                  var context, _a, _b, _c;
-                  return __generator(this, function (_d) {
-                      switch (_d.label) {
-                          case 0:
-                              context = new DatabaseUpgradeContext();
-                              func(context);
-                              _a = this;
-                              _b = db_1.databaseUpgrade;
-                              return [4 /*yield*/, this.db()];
-                          case 1: return [4 /*yield*/, _b.apply(void 0, [_d.sent(),
-                                  context.additions,
-                                  context.removals])];
-                          case 2:
-                              _a._db = _d.sent();
-                              return [2 /*return*/, this._db];
-                      }
-                  });
-              });
-          };
-          Database.prototype.db = function () {
+          Database.prototype.current = function () {
               return __awaiter(this, void 0, void 0, function () {
                   var _a;
                   return __generator(this, function (_b) {
@@ -1137,6 +1116,27 @@ var smokedb = (function () {
                               _a._db = _b.sent();
                               _b.label = 2;
                           case 2: return [2 /*return*/, this._db];
+                      }
+                  });
+              });
+          };
+          Database.prototype.upgrade = function (func) {
+              return __awaiter(this, void 0, void 0, function () {
+                  var context, _a, _b, _c;
+                  return __generator(this, function (_d) {
+                      switch (_d.label) {
+                          case 0:
+                              context = new DatabaseUpgradeContext();
+                              func(context);
+                              _a = this;
+                              _b = db_1.databaseUpgrade;
+                              return [4 /*yield*/, this.current()];
+                          case 1: return [4 /*yield*/, _b.apply(void 0, [_d.sent(),
+                                  context.additions,
+                                  context.removals])];
+                          case 2:
+                              _a._db = _d.sent();
+                              return [2 /*return*/, this._db];
                       }
                   });
               });
@@ -1161,7 +1161,7 @@ var smokedb = (function () {
               return __generator(this, function (_a) {
                   switch (_a.label) {
                       case 0:
-                          store = database.store("customers");
+                          store = database.store("users");
                           return [4 /*yield*/, store.collect()];
                       case 1:
                           records = _a.sent();
@@ -1180,7 +1180,7 @@ var smokedb = (function () {
               return __generator(this, function (_a) {
                   switch (_a.label) {
                       case 0:
-                          store = database.store("customers");
+                          store = database.store("users");
                           for (i = 0; i < count; i++) {
                               store.insert({ firstname: "dave", lastname: "smith", value: i });
                           }
@@ -1198,7 +1198,7 @@ var smokedb = (function () {
               return __generator(this, function (_a) {
                   switch (_a.label) {
                       case 0:
-                          store = database.store("customers2");
+                          store = database.store("users");
                           return [4 /*yield*/, store.orderBy(function (n) { return n.key; }).collect()];
                       case 1:
                           records = _a.sent();
@@ -1216,7 +1216,7 @@ var smokedb = (function () {
               return __generator(this, function (_a) {
                   switch (_a.label) {
                       case 0:
-                          store = database.store("customers");
+                          store = database.store("users");
                           return [4 /*yield*/, store.orderBy(function (n) { return n.value.value; }).first()];
                       case 1:
                           record = _a.sent();
@@ -1236,7 +1236,7 @@ var smokedb = (function () {
               return __generator(this, function (_a) {
                   switch (_a.label) {
                       case 0:
-                          store = database.store("customers");
+                          store = database.store("users");
                           return [4 /*yield*/, store.orderBy(function (n) { return n.value.value; }).collect()];
                       case 1:
                           records = _a.sent();
@@ -1265,7 +1265,7 @@ var smokedb = (function () {
                               }
                               return new Blob([buf.join("")], { type: "text/plain" });
                           };
-                          store = database.store("customers");
+                          store = database.store("users");
                           return [4 /*yield*/, store.orderBy(function (n) { return n.key; }).collect()];
                       case 1:
                           records = _a.sent();
@@ -1287,7 +1287,7 @@ var smokedb = (function () {
               return __generator(this, function (_a) {
                   switch (_a.label) {
                       case 0:
-                          store = database.store("customers");
+                          store = database.store("users");
                           return [4 /*yield*/, store.orderBy(function (n) { return n.key; }).first()];
                       case 1:
                           record = _a.sent();
@@ -1303,26 +1303,21 @@ var smokedb = (function () {
       }
       function test() {
           return __awaiter(this, void 0, void 0, function () {
-              var store, _a, _b, _c;
+              var _a, _b, _c;
               return __generator(this, function (_d) {
                   switch (_d.label) {
-                      case 0:
-                          store = database.store("customers");
-                          return [4 /*yield*/, deleteAll()];
+                      case 0: return [4 /*yield*/, insert(10)];
                       case 1:
                           _d.sent();
-                          return [4 /*yield*/, insert(10)];
+                          return [4 /*yield*/, updateAll()];
                       case 2:
                           _d.sent();
-                          return [4 /*yield*/, updateAll()];
+                          return [4 /*yield*/, listAll()];
                       case 3:
                           _d.sent();
-                          return [4 /*yield*/, listAll()];
-                      case 4:
-                          _d.sent();
                           _b = (_a = console).log;
-                          return [4 /*yield*/, store.count()];
-                      case 5:
+                          return [4 /*yield*/, database.store("users").count()];
+                      case 4:
                           _b.apply(_a, [_d.sent()]);
                           console.log("done");
                           return [2 /*return*/];
