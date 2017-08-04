@@ -1,6 +1,6 @@
 /*--------------------------------------------------------------------------
 
- smoke-db - Abstraction over indexeddb with LINQ style data queries and projection.
+ smoke-database
 
  The MIT License (MIT)
 
@@ -23,194 +23,31 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
- 
+
 ---------------------------------------------------------------------------*/
 
-export interface IQueryable<T> {
-  /**
-   * Applies an accumulator function over a sequence.
-   * @param {(acc: U, current: T, index?: number): U} func the aggregate function.
-   * @returns {Promise<U>}
-   */
-  aggregate<U>(func: (acc: U, value: T, index: number) => U, initial: U): Promise<U>
-  /**
-   * Determines whether all the elements of a sequence satisfy a condition.
-   * @param {(value: T): boolean} func the all function.
-   * @returns {Promise<boolean>}
-   */
-  all(func: (value: T, index: number) => boolean): Promise<boolean>
-  /**
-   * Determines whether a sequence contains any elements that meet this criteria.
-   * @param {(value: T): boolean} func the any function.
-   * @returns {Promise<boolean>}
-   */
-  any(func: (value: T, index: number) => boolean): Promise<boolean> 
-  /**
-   * Computes the average of a sequence of numeric values.
-   * @param {(value:T): number} func the average function.
-   * @returns {Promise<number>}
-   */
-  average(func: (value: T, index: number) => number): Promise<number> 
-  /**
-   * preforms a type cast from the source type T to U. Only useful to typescript.
-   * @returns {IQueryable<U>}
-   */
-  cast<U>(): IQueryable<U> 
-  /**
-   * Concatenates two queryable sequences returning a new queryable that enumerates the first, then the second.
-   * @param {Queryable<T>} queryable the queryable to concat.
-   * @returns {Queryable<T>}
-   */
-  concat(queryable: IQueryable<T>): IQueryable<T> 
-  /**
-   * Returns the number of elements in a sequence.
-   * @returns Promise<number>
-   */
-  count(): Promise<number> 
-  /**
-   * Returns distinct elements from a sequence by using the default equality comparer to compare values.
-   * @returns {IQueryable<T>}
-   */
-  distinct(): IQueryable<T> 
-  /**
-   * Returns the element at the specified index, if no element exists, reject.
-   * @param {number} index the element index.
-   * @returns {Promise<T>}
-   */
-  elementAt(index: number): Promise<T> 
-  /**
-   * Returns the element at the specified index, if no element exists, resolve undefined.
-   * @param {number} index the element index.
-   * @returns {Promise<T>}
-   */
-  elementAtOrDefault(index: number): Promise<T> 
-  /**
-   * Returns the first element. if no element exists, reject.
-   * @returns {Promise<T>}
-   */
-  first(): Promise<T> 
-  /**
-   * Returns the first element. if no element exists, resolve undefined.
-   * @returns {Promise<T>}
-   */
-  firstOrDefault(): Promise<T> 
-  /**
-   * Produces the set intersection of two sequences by using the default equality comparer to compare values.
-   * @param {IQueryable<T>} queryable the queryable to intersect.
-   * @returns {IQueryable<T>}
-   */
-  intersect(queryable: IQueryable<T>): IQueryable<T> 
-  /**
-   * Returns the last element in this sequence. if empty, reject.
-   * @returns {Promise<T>}
-   */
-  last(): Promise<T>
-  /**
-   * Returns the last element in this sequence. if empty, resolve undefined.
-   * @returns {Promise<T>}
-   */
-  lastOrDefault(): Promise<T> 
-  /**
-   * Sorts the elements of a sequence in ascending order according to a key. This method requires
-   * an internal collect().
-   * @param {(value: T): U} func the orderBy function.
-   * @returns {Queryable<T>}
-   */
-  orderBy<U>(func: (value: T) => U): IQueryable<T>
-  /**
-   * Sorts the elements of a sequence in descending order according to a key. This method requires
-   * an internal collect().
-   * @param {(value: T): U} func the orderByDescending function.
-   * @returns {IQueryable<T>}
-   */
-  orderByDescending<U>(func: (value: T) => U): IQueryable<T> 
-  /**
-   * Inverts the order of the elements in a sequence. This method requires
-   * an internal collect().
-   * @returns {IQueryable<T>}
-   */
-  reverse(): IQueryable<T> 
-  /**
-   * Projects each element of a sequence into a new form.
-   * @param {(value:T, index: number): U} func the select function.
-   * @returns {Queryable<U>}
-   */
-  select<U>(func: (value: T, index: number) => U): IQueryable<U> 
-  /**
-   * Projects each element of a sequence to an IEnumerable<T> and combines the resulting sequences into one sequence.
-   * @param {(value:T, index: number): Queryable<U>} func the selectMany function.
-   * @returns {IQueryable<U>}
-   */
-  selectMany<U>(func: (value: T, index: number) => Array<U>): IQueryable<U> 
-  /**
-   * Returns the only element of a sequence that satisfies a specified condition.
-   * @param {(value: T, index: number): boolean} func the single function.
-   * @returns {Promise<T>}
-   */
-  single(func: (value: T, index: number) => boolean): Promise<T>
-  /**
-   * Returns the only element of a sequence that satisfies a specified condition or null if no such element exists.
-   * @param {(value: T, index: number): boolean} func the singleOfDefault function.
-   * @returns {Promise<T>}
-   */
-  singleOrDefault(func: (value: T, index: number) => boolean): Promise<T>
-  /**
-   * Bypasses a specified number of elements in a sequence and then returns the remaining elements.
-   * @param {number} count the number of elements to skip.
-   * @returns {Queryable<T>}
-   */
-  skip(count: number): IQueryable<T>
-  /**
-   * Computes the sum of the sequence of numeric values.
-   * @param {(value: T, index: number): number} func the sum function.
-   * @returns {Promise<number>}
-   */
-  sum(func: (value: T, index: number) => number): Promise<number>
-  /**
-   * Returns a specified number of contiguous elements from the start of a sequence.
-   * @param {number} count the number of elements to take.
-   * @returns {IQueryable<T>}
-   */
-  take(count: number): IQueryable<T> 
-  /**
-   * Filters a sequence of values based on a predicate.
-   * @param {(value: T, index: number): boolean} func the where function.
-   * @returns {Queryable<T>}
-   */
-  where(func: (value: T, index: number) => boolean): IQueryable<T>
-  /**
-   * Enumerates each element in this sequence.
-   * @param {(value: T, index: number) => void} func the each function.
-   * @returns {Promise<any>}
-   */
-  each(func: (value: T, index: number) => void): Promise<any>
-  /**
-   * Collects the results of this queryable into a array.
-   * @returns {Promise<Array<T>>}
-   */
-  collect(): Promise<Array<T>>
-}
-
+export type SourceNextFunction<T> = (value: T)   => void
+export type SourceErrorFunction   = (error: any) => void
+export type SourceEndFunction     = ()           => void
 
 /**
- * SourceContext<T>: A source emitter context passed into
- * producer streams when creating sources.
+ * SourceContext
+ * 
+ * Provides a event source in which to dispatch streaming events.
  */
 export class SourceContext<T> {
-  private _done: boolean
+
+  private ended: boolean
 
   /**
    * creates a new source context.
-   * @param {(value: T) => void} _next the next function.
-   * @param {(value: string) => void} _error the error function.
-   * @param {() => void} _end the end function.
+   * @param {SourceNextFunction<T>} onnext the next function.
+   * @param {SourceErrorFunction} onerror the error function.
+   * @param {SourceEndFunction} onend the end function.
    * @returns {SourceContext<T>}
    */
-  constructor(
-    private _next: (value: T) => void,
-    private _error: (value: string) => void,
-    private _end: () => void) {
-    this._done = false
+  constructor(private onnext: SourceNextFunction<T>, private onerror: SourceErrorFunction, private onend: SourceEndFunction) {
+    this.ended = false
   }
 
   /**
@@ -219,8 +56,8 @@ export class SourceContext<T> {
    * @returns {void}
    */
   public next(value: T): void {
-    if (this._done === false) {
-      this._next(value)
+    if (this.ended === false) {
+      this.onnext(value)
     }
   }
 
@@ -230,10 +67,10 @@ export class SourceContext<T> {
    * @returns {void}
    */
   public error(value: string): void {
-    if (this._done === false) {
-      this._done = true
-      this._error(value)
-      this._end()
+    if (this.ended === false) {
+      this.ended = true
+      this.onerror(value)
+      this.onend()
     }
   }
 
@@ -242,48 +79,57 @@ export class SourceContext<T> {
    * @returns {void}
    */
   public end(): void {
-    if (this._done === false) {
-      this._done = true
-      this._end()
+    if (this.ended === false) {
+      this.ended = true
+      this.onend()
     }
   }
 }
 
-/** Element<T>: The types of elements emitted from a source. */
-export interface ValueElement<T> { type: "value", value: T }
-export interface ErrorElement    { type: "error", error: string }
-export interface EndElement      { type: "end" }
-export type Element<T> = ValueElement<T> | ErrorElement | EndElement
+const STREAM_VALUE = 0
+const STREAM_ERROR = 1
+const STREAM_END   = 2
+
+export interface ValueEvent<T> { type: 0, value: T }
+export interface ErrorEvent    { type: 1, error: string }
+export interface EndEvent      { type: 2 } 
+export type Event<T> = ValueEvent<T> | ErrorEvent | EndEvent
+export type SourceEventFunction<T> = (event: Event<T>) => void
+
 /**
- * Source<T>
+ * Source
+ * 
  * Provides a mechansism to emit streams of values.
  */
 export class Source<T> {
+
   /**
    * creates a new source.
    * @param {(SourceContext<T>) => void} func the source function.
    * @returns {Source<T>}
    */
   constructor(private func: (context: SourceContext<T>) => void) { }
+
   /**
-   * reads values from this source.
-   * @param {(Element<T>) => void} func the read function.
+   * subscribes to events emitted from this source.
+   * @param {SourceEventFunction<T>} func the read function.
    * @returns {void}
    */
-  public read(func: (element: Element<T>) => void): void {
-    let context = new SourceContext<T>(
-      value => func({ type: "value", value: value }),
-      error => func({ type: "error", error: error }),
-      ()    => func({ type: "end" }))
+  public read(func: SourceEventFunction<T>): void {
+    const context = new SourceContext<T>(
+      value => func({ type: 0, value: value }),
+      error => func({ type: 1, error: error }),
+      ()    => func({ type: 2 }))
     this.func(context)
   }
 }
 
 /**
- * Queryable<T>: Provides a asynchronous query interface for 
- * lazy emitted values from a given source.
+ * Queryable
+ * 
+ * Queryable interface for lazy sequences of values.
  */
-export class Queryable<T> implements IQueryable<T> {
+export class Queryable<T> {
 
   /**
    * creates a new queryable from the given source.
@@ -302,13 +148,14 @@ export class Queryable<T> implements IQueryable<T> {
       let index = 0
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             initial = func(initial, element.value, index)
             index += 1
             break;
-          case "error":
+          case STREAM_ERROR:
             reject(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             resolve(initial)
             break;
         }
@@ -326,15 +173,16 @@ export class Queryable<T> implements IQueryable<T> {
       let index = 0
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             if (func(element.value, index) === false) {
               resolve(false)
             }
             index += 1
             break;
-          case "error":
+          case STREAM_ERROR:
             reject(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             resolve(true)
             break;
         }
@@ -352,15 +200,16 @@ export class Queryable<T> implements IQueryable<T> {
       let index = 0
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             if (func(element.value, index) === true) {
               resolve(true)
             }
             index += 1
             break;
-          case "error":
+          case STREAM_ERROR:
             reject(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             resolve(false)
             break;
         }
@@ -376,16 +225,17 @@ export class Queryable<T> implements IQueryable<T> {
   public average(func: (value: T, index: number) => number): Promise<number> {
     return new Promise<number>((resolve, reject) => {
       let index = 0
-      let acc = 0
+      let acc   = 0
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             acc += func(element.value, index)
             index += 1
             break;
-          case "error":
+          case STREAM_ERROR:
             reject(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             resolve((index > 0) ? acc / index : 0)
             break;
         }
@@ -401,12 +251,13 @@ export class Queryable<T> implements IQueryable<T> {
     return new Queryable<U>(new Source<U>(context => {
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             context.next(<U><any>element.value)
             break;
-          case "error":
+          case STREAM_ERROR:
             context.error(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             context.end()
             break;
         }
@@ -423,20 +274,21 @@ export class Queryable<T> implements IQueryable<T> {
     return new Queryable<T>(new Source<T>(context => {
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             context.next(element.value)
             break;
-          case "error":
+          case STREAM_ERROR:
             context.error(element.error)
-          case "end":
+          case STREAM_END:
             queryable.source.read(element => {
               switch (element.type) {
-                case "value":
+                case STREAM_VALUE:
                   context.next(element.value)
                   break;
-                case "error":
+                case STREAM_ERROR:
                   context.error(element.error)
-                case "end":
+                  break;
+                case STREAM_END:
                   context.end()
                   break;
               }
@@ -446,7 +298,7 @@ export class Queryable<T> implements IQueryable<T> {
       })
     }))
   }
-  
+
   /**
    * Returns the number of elements in a sequence.
    * @returns Promise<number>
@@ -456,12 +308,13 @@ export class Queryable<T> implements IQueryable<T> {
       let count = 0;
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             count += 1
             break;
-          case "error":
+          case STREAM_ERROR:
             reject(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             resolve(count)
             break;
         }
@@ -478,15 +331,16 @@ export class Queryable<T> implements IQueryable<T> {
       let acc = new Array<T>()
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             if (acc.indexOf(element.value) === -1) {
               acc.push(element.value)
               context.next(element.value)
             }
             break;
-          case "error":
+          case STREAM_ERROR:
             context.error(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             acc = []
             context.end()
             break;
@@ -505,15 +359,16 @@ export class Queryable<T> implements IQueryable<T> {
       let index0 = 0
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             index0 += 1
             if (index0 === index) {
               resolve(element.value)
             }
             break;
-          case "error":
+          case STREAM_ERROR:
             reject(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             reject(`no element at [${index}]`)
             break;
         }
@@ -531,15 +386,16 @@ export class Queryable<T> implements IQueryable<T> {
       let index0 = 0
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             index0 += 1
             if (index0 === index) {
               resolve(element.value)
             }
             break;
-          case "error":
+          case STREAM_ERROR:
             reject(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             resolve(undefined)
             break;
         }
@@ -556,15 +412,16 @@ export class Queryable<T> implements IQueryable<T> {
       let done = false
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             if (done === false) {
               done = true
               resolve(element.value)
             }
             break;
-          case "error":
+          case STREAM_ERROR:
             reject(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             if (done === false) {
               done = true
               reject("no elements in sequence")
@@ -584,15 +441,16 @@ export class Queryable<T> implements IQueryable<T> {
       let done = false
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             if (done === false) {
               done = true
               resolve(element.value)
             }
             break;
-          case "error":
+          case STREAM_ERROR:
             reject(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             if (done === false) {
               done = true
               resolve(undefined)
@@ -613,14 +471,15 @@ export class Queryable<T> implements IQueryable<T> {
       this.collect().then(buffer => {
         queryable.source.read(element => {
           switch (element.type) {
-            case "value":
+            case STREAM_VALUE:
               if (buffer.indexOf(element.value) !== -1) {
                 context.next(element.value)
               }
               break;
-            case "error":
+            case STREAM_ERROR:
               context.error(element.error)
-            case "end":
+              break;
+            case STREAM_END:
               context.end()
               break;
           }
@@ -638,12 +497,13 @@ export class Queryable<T> implements IQueryable<T> {
       let current: T = undefined
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             current = element.value
             break;
-          case "error":
+          case STREAM_ERROR:
             reject(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             if (current === undefined) {
               reject("no elements in sequence")
             } else {
@@ -664,12 +524,13 @@ export class Queryable<T> implements IQueryable<T> {
       let current: T = undefined
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             current = element.value
             break;
-          case "error":
+          case STREAM_ERROR:
             reject(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             resolve(current)
             break;
         }
@@ -745,13 +606,14 @@ export class Queryable<T> implements IQueryable<T> {
       let index = 0
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             context.next(func(element.value, index))
             index += 1
             break;
-          case "error":
+          case STREAM_ERROR:
             context.error(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             context.end()
             break;
         }
@@ -769,14 +631,15 @@ export class Queryable<T> implements IQueryable<T> {
       let index = 0
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             func(element.value, index).forEach(value =>
               context.next(value))
             index += 1
             break;
-          case "error":
+          case STREAM_ERROR:
             context.error(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             context.end()
             break;
         }
@@ -795,7 +658,7 @@ export class Queryable<T> implements IQueryable<T> {
       let elem: T = undefined
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             if (func(element.value, index) === true) {
               if (elem === undefined) {
                 elem = element.value
@@ -805,9 +668,10 @@ export class Queryable<T> implements IQueryable<T> {
             }
             index += 1
             break;
-          case "error":
+          case STREAM_ERROR:
             reject(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             if (elem === undefined) {
               reject("unable to locate element with the given critera.")
             } else {
@@ -818,6 +682,7 @@ export class Queryable<T> implements IQueryable<T> {
       })
     })
   }
+
   /**
    * Returns the only element of a sequence that satisfies a specified condition or null if no such element exists.
    * @param {(value: T, index: number): boolean} func the singleOfDefault function.
@@ -829,7 +694,7 @@ export class Queryable<T> implements IQueryable<T> {
       let elem: T = undefined
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             if (func(element.value, index) === true) {
               if (elem === undefined) {
                 elem = element.value
@@ -839,9 +704,10 @@ export class Queryable<T> implements IQueryable<T> {
             }
             index += 1
             break;
-          case "error":
+          case STREAM_ERROR:
             reject(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             resolve(elem)
             break;
         }
@@ -859,15 +725,16 @@ export class Queryable<T> implements IQueryable<T> {
       let index = 0
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             if (index >= count) {
               context.next(element.value)
             }
             index += 1
             break;
-          case "error":
+          case STREAM_ERROR:
             context.error(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             context.end()
             break;
         }
@@ -886,13 +753,14 @@ export class Queryable<T> implements IQueryable<T> {
       let acc = 0
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             acc += func(element.value, index)
             index += 1
             break;
-          case "error":
+          case STREAM_ERROR:
             reject(element.error)
-          case "end":
+            break;
+          case STREAM_END:
             resolve(acc)
             break;
         }
@@ -910,16 +778,16 @@ export class Queryable<T> implements IQueryable<T> {
       let index = 0
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             if (index < count) {
               context.next(element.value)
             }
             index += 1
             break;
-          case "error":
+          case STREAM_ERROR:
             context.error(element.error)
             break;
-          case "end":
+          case STREAM_END:
             context.end()
             break;
         }
@@ -937,16 +805,16 @@ export class Queryable<T> implements IQueryable<T> {
       let index = 0
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             if (func(element.value, index) === true) {
               context.next(element.value)
             }
             index += 1
             break;
-          case "error":
+          case STREAM_ERROR:
             context.error(element.error)
             break;
-          case "end":
+          case STREAM_END:
             context.end()
             break;
         }
@@ -964,14 +832,14 @@ export class Queryable<T> implements IQueryable<T> {
       let index = 0
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             func(element.value, index)
             index += 1
             break;
-          case "error":
+          case STREAM_ERROR:
             reject(element.error)
             break;
-          case "end":
+          case STREAM_END:
             resolve(undefined)
             break;
         }
@@ -988,13 +856,13 @@ export class Queryable<T> implements IQueryable<T> {
       let buffer = new Array<T>()
       this.source.read(element => {
         switch (element.type) {
-          case "value":
+          case STREAM_VALUE:
             buffer.push(element.value)
             break;
-          case "error":
+          case STREAM_ERROR:
             reject(element.error)
             break;
-          case "end":
+          case STREAM_END:
             resolve(buffer)
             break;
         }

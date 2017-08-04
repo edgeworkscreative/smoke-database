@@ -1,0 +1,14 @@
+{
+  "name": "smoke-database",
+  "version": "1.0.0",
+  "description": "lightweight abstraction over indexeddb",
+  "main": "./target/index.js",
+  "test": "node ./target/test.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sinclairzx81/smoke-database"
+  },
+  "author": "sinclairzx81",
+  "license": "MIT",
+  "devDependencies": {}
+}

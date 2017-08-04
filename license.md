@@ -25,9 +25,3 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ---------------------------------------------------------------------------*/
-
-import {Database} from "../src/index"
-
-const database = new Database("app", ["users"])
-
-// todo: write some tests >_>

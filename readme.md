@@ -1,124 +1,132 @@
-## smoke-db
+# smoke-database
 
-Abstraction over indexeddb with LINQ style data queries and projection.
-
-```javascript
-
-// create database.
-const database = new smokedb.Database("myapp")
-
-// insert records into "users" store.
-await database.store("users")
-  .insert({name: "dave",  email: "dave@domain.com" })
-  .insert({name: "alice", email: "alice@domain.com"})
-  .insert({name: "jones"  email: "jones@domain.com"})
-  .insert({name: "mary",  email: "mary@domain.com" })
-  .insert({name: "tim",   email: "tim@domain.com"  })
-  .submit()
-
-// read records from "users" store.
-let user = await database.store ("users")
-  .where (record  => record.value.email === "jones@domain.com")
-  .select(record  => record.value)
-  .collect()
-
-```
+A simple indexeddb database abstraction.
 
 ### overview
 
-smoke-db is a proof of concept database abstraction over indexeddb. smoke-db seeks to provide a simple
-insert/update/delete/query interface against stores managed in indexeddb, and ultimately simplify  
-indexeddb development for small projects.
+smoke-database is a small abstraction over indexeddb. It aims to provide a simple interface for reading and writing store records to and from indexeddb and to offer a linq inspired query interface for querying records. smoke-database hides many of the details of indexeddb (database versioning, indices, etc) offering the user a straight forward ```insert```, ```update```, ```delete``` and ```query``` interface only.
 
-smoke-db is a work in progress. 
+[building the project](#building-the-project)
 
+[creating a database](#creating-a-database)
+
+[inserting records](#inserting-records)
+
+[updating records](#updating-records)
+
+[deleting records](#deleting-records)
+
+[querying records](#querying-records)
+
+### building the project
+
+smoke-database is written in typescript, and is intended to be added to existing projects who need some form of data persistence in the browser. End users can build the project by running the ```tasks.js``` script included with this project.
+
+```
+node tasks install # installs build dependencies 
+node tasks run     # starts http watch process on ./test/index.ts (port 5000) 
+```
+output is written to the ```./target``` directory.
 ### creating a database
 
-The following code will create a database that attaches to a indexeddb database named ```my-crm```.
-
-&gt; If the database does not already exist, smoke will automatically create the database on first request to read / write data.
-
-```javascript
-const database = new smokedb.Database("my-crm")
-```
-
-### insert records
-
-The following code will insert records into the object store ```users```. If the store does not
-exist, it will be automatically created.
-
-&gt; All stores created by smoke are set to have auto incremented key values. These keys are numeric, and managed
-by indexeddb. Callers can obtain the keys when querying records. (see record type)
+The following will create a new database named ```app``` which contains a single store ```users```. smoke-database will track versions based on the stores array and automatically add and remove stores based on the store names passed on the contructor. The database will be created if not exists, or loaded if it does.
 
 ```typescript
-database
-  .store("users")
-  .insert({name: "dave",  age: 32})
-  .insert({name: "alice", age: 29})
-  .insert({name: "bob",   age: 42})
-  .insert({name: "jones", age: 25})
-  .submit()
+import { Database } from "./smoke-database"
+
+const database = new Database("app", ["users"])
 ```
 
-### update records
+### inserting records
 
-To update a record, the caller must first query the record. The following preforms a query to 
-read back the user ```dave```. The code then increments the users age, and updates.
+The following examples demonstrate adding records. Note that smoke mandates that the ```key``` property be set when adding records. The ```key``` is mandatory and analogous to 
+```id``` and thus must be unique. There is a convenience function ```createKey()``` available on the ```Database``` which is used to generate a unique key below, but any unique string value will work.
+
+The following inserts a single record.
+```typescript
+database.store("users").insert({
+  key  : Database.createKey()
+  name : "dave",
+  email: "dave@domain.com"
+})
+```
+The following inserts multiple records.
+```typescript
+database.store("users").insert([{
+  key  : Database.createKey()
+  name : "dave",
+  email: "dave@domain.com"
+}, {
+  key  : Database.createKey()
+  name : "alice",
+  email: "alice@domain.com"
+}])
+```
+
+### updating records
+
+To update records, smoke-database requires you have a full copy of the object available. The reason is the update will overwrite the entirety of the record being updated. The easiest way to approach this is to request the record first.
+
+The following gets the user ```dave``` and updates their email address. Note we use async functions here. both reading and writing is asynchronous in indexeddb and smoke-database reflects this, thus and async/await is leveraged for clarity in this example.
 
 ```typescript
-let user = await database.store("users")
-  .where(record => record.value.name === "dave")
-  .first()
+const f = async () => {
+  // query record.
+  const user = await database.store("users").query().where(n => n.name === "dave").first()
 
-user.value.age += 1;
+  // change email address.
+  user.email = "dave.smith@domain.com"
+  
+  // update the record
+  await database.store("users").update(user)
+}
+```
+Alternatively, one can preform sweeping updates by passing a query to the store. The following queries all records and adds an additional
+```address``` property to the record. Note ```select``` is analogous to javascripts ```map```, and ```select``` is derived from LINQ.
 
-await database.store("users")
-  .update(user)
-  .submit()
+```typescript
+const f = async () => {
+
+  // remap all users
+  const users = database.store("users").query().select(user => ({
+    key    : user.key,
+    name   : user.name,
+    email  : email,
+    address: "unknown" 
+  })) // <-- IQueryable<T>
+
+  // update users
+  await database.store("users").update (user)
+}
 ```
 
 ### deleting records
 
-Deleting records works in a similar fashion to updating. First we read the record, followed by a call to delete.
-
-&gt; It is possible to prevent the initial read by storing the key for the record. Calling ```delete({key: 123})``` works equally well.
+Deleting records is similar to updating records where a copy of record is required first. Internally however, smoke-database only cares about the ```{key: ...}``` property. The following deletes user dave.
 
 ```typescript
-let user = await database.store("users")
-  .where(record => record.value.name === "alice")
-  .first()
-
-await database.store("users")
-  .delete(user)
-  .submit()
-```
-### the record type
-
-All read / query operations return the type ```Record<T>```. The record type looks as follows.
-
-```typescript
-interface Record<T> {
-  key   : number 
-  value : T         
+const f = async () => {
+  await database.store("users").delete ( 
+    database.store("users").query().where(n => n.name === "dave")
+  )
 }
 ```
-Callers need to be mindful when filtering and mapping records, that the actual data for the record
-is housed under the ```value``` property, with the auto-generated key available on the ```key```
-property of the record.
+Or all users if you prefer...
+```typescript
+const f = async () => {
+  await database.store("users").delete (
+    database.store("users").query()
+    )
+}
+```
 
 ### querying records
 
-Records can be queried from stores. Smoke-DB provides a query interface fashioned on a asynchronous version of .NET ```IQueryable<T>``` interface.
-In fact, the store type implements a version of ```IQueryable<Record<T>>```, meaning query functions are available on the store
-directly. Like ```IQueryable<T>```, reading does not begin until the caller requests a result, allowing operations to be chained and
-deferred. 
+A store's ```query``` method (as seen above) returns a type analogous to LINQ's ```IQueryable<T>``` interface. Internally smoke-database runs full linear scans across ALL store records, and these operations are applied lazily across each record emitted from indexeddb. Users should be mindful of this full linear scan, as stores with large record counts may result in a performance hit.
 
-It is important to note that currently, ALL queries require a complete linear scan of the store, making 
-stores with high record counts somewhat impractical. This aspect may be addressed in future.
+Unlike LINQ however, we have no waiting / block mechanism in JavaScript. smoke-database approaches this by having scalar results (aggregate, count, first, firstOrDefault etc) return promises which much be awaited, and for obtaining lists of results, the ```collect``` method must be used. The ```collect``` method returns a ```Promise<Array<T>>``` type.
 
-The following table outlines the full list of queries available on stores.
-
-| method | description |
+| operation | description |
 | ---    | ---         |
 | aggregate&lt;U&gt;(func: (acc: U, value: T, index: number) =&gt; U, initial: U): Promise&lt;U&gt;  | Applies an accumulator function over a sequence.      |
 | all(func: (value: T, index: number) =&gt; boolean): Promise&lt;boolean&gt;                   | Determines whether all the elements of a sequence satisfy a condition. |
@@ -149,36 +157,6 @@ The following table outlines the full list of queries available on stores.
 | take(count: number): IQueryable&lt;T&gt;                                                   | Returns a specified number of contiguous elements from the start of a sequence. |
 | where(func: (value: T, index: number) =&gt; boolean): IQueryable&lt;T&gt;                     | Filters a sequence of values based on a predicate. |
 
-### examples
-count records in store.
-```typescript
-let count = await database.store("users").count()
-```
-map records to customers and collect the result as a array.
-```typescript
-let customers = await database.store("users")
-  .select(record => record.value)
-  .collect()
-```
-order customers by lastname
-```typescript
-let ordered = await database
-  .store  ("users")
-  .select (record => record.value)
-  .orderBy(customer => customer.lastname)
-  .collect()
-```
-compute the average age of customers
-```typescript
-let average = await database
-  .store   ("users")
-  .select  (record => record.value.age)
-  .average (age => age)
-```
-
-### license
+### licence
 
 MIT
-
-
-
