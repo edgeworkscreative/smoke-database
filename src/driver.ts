@@ -31,14 +31,9 @@
  * @returns {IDBFactory}
  */
 const factorydb = (): IDBFactory => {
-  const host: any = window
-  return host.indexedDB
-    || host.mozIndexedDB
-    || host.webkitIndexedDB
-    || host.msIndexedDB
-    || host.shimIndexedDB;
+  return indexedDB
 }
-export type Record             = { key: string }
+export type Record             = { key: string, [data: string]: string }
 export type RecordDataEvent    = { type: "data", data: Record }
 export type RecordErrorEvent   = { type: "error", error: any }
 export type RecordEndEvent     = { type: "end" }
@@ -89,7 +84,7 @@ const compute_schematics_delta = (database: IDBDatabase, stores: Schematics): Co
 /**
  * opens a database connection.
  * @param {Schema} schema the schema for this database.
- * @param {Promise<IDBDatabase>} 
+ * @param {Promise<IDBDatabase>}
  */
 export const database_open = (name: string) => new Promise<IDBDatabase>((resolve, reject) => {
   const factory = factorydb()
@@ -100,11 +95,11 @@ export const database_open = (name: string) => new Promise<IDBDatabase>((resolve
 
 /**
  * upgrades a existing database with the given additions and removals. the function detects
- * if the database needs to be updated, and if so, upgrades the database, otherwise, this 
+ * if the database needs to be updated, and if so, upgrades the database, otherwise, this
  * function will return the database passed in.
  * @param {IDBDatabase} database  an existing database.
  * @param {Schematics} schematics the schematics for this datastore.
- * @param {Promise<IDBDatabase>} 
+ * @param {Promise<IDBDatabase>}
  */
 export const database_update = (database: IDBDatabase, schematics: Schematics) => new Promise<IDBDatabase>((resolve, reject) => {
 
@@ -205,7 +200,7 @@ export const store_delete_records = (database: IDBDatabase, storename: string, r
  * returns the number of records in this store.
  * @param {IDBDatabase} database the database.
  * @param {string} storename the store to count records.
- * @returns {Promise<number>} 
+ * @returns {Promise<number>}
  */
 export const store_record_count = (database: IDBDatabase, storename: string) => new Promise<number>((resolve, reject) => {
   const transaction = database.transaction([storename], 'readonly')
@@ -259,7 +254,7 @@ export const store_read_records = (database: IDBDatabase, storename: string, fun
 /**
  * returns a record from the given key.
  * @param {IDBDatabase} database the database to get from.
- * @param {string} storename the name of the store to get from. 
+ * @param {string} storename the name of the store to get from.
  * @param {string | number} key the key to get.
  * @returns {Promise<Record>}
  */
